@@ -7,7 +7,7 @@
  * mathematical functions, and a flexible expression parser.
  *
  * @version 3.3.0
- * @date    2016-07-05
+ * @date    2016-07-09
  *
  * @license
  * Copyright (C) 2013-2016 Jos de Jong <wjosdejong@gmail.com>
@@ -8287,13 +8287,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * Execute the callback function element wise for each element in array and any
 	 * nested array
 	 * Returns an array with the results
-	 * @param {Array | Matrix} array
+	 * @param {Array | TypedArray | Matrix} array
 	 * @param {Function} callback   The callback is called with two parameters:
 	 *                              value1 and value2, which contain the current
 	 *                              element of both arrays.
 	 * @param {boolean} [skipZeros] Invoke callback function for non-zero values only.
 	 *
-	 * @return {Array | Matrix} res
+	 * @return {Array | TypedArray | Matrix} res
 	 */
 	module.exports = function deepMap(array, callback, skipZeros) {
 	  if (array && (typeof array.map === 'function')) {
@@ -11841,7 +11841,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	/**
 	 * Recursively validate whether each element in a multi dimensional array
 	 * has a size corresponding to the provided size array.
-	 * @param {Array} array    Array to be validated
+	 * @param {Array | TypedArray} array    Array to be validated
 	 * @param {number[]} size  Array with the size of each dimension
 	 * @param {number} dim   Current dimension
 	 * @throws DimensionError
@@ -11860,7 +11860,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    var dimNext = dim + 1;
 	    for (i = 0; i < len; i++) {
 	      var child = array[i];
-	      if (!Array.isArray(child)) {
+	      if (!Array.isArray(child) && !ArrayBuffer.isView(child)) {
 	        throw new DimensionError(size.length - 1, size.length, '<');
 	      }
 	      _validate(array[i], size, dimNext);
@@ -11869,7 +11869,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  else {
 	    // last dimension. none of the childs may be an array
 	    for (i = 0; i < len; i++) {
-	      if (Array.isArray(array[i])) {
+	      if (Array.isArray(array[i]) || ArrayBuffer.isView(array[i])) {
 	        throw new DimensionError(size.length + 1, size.length, '>');
 	      }
 	    }
@@ -11879,7 +11879,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	/**
 	 * Validate whether each element in a multi dimensional array has
 	 * a size corresponding to the provided size array.
-	 * @param {Array} array    Array to be validated
+	 * @param {Array | TypedArray} array    Array to be validated
 	 * @param {number[]} size  Array with the size of each dimension
 	 * @throws DimensionError
 	 */
@@ -11887,7 +11887,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var isScalar = (size.length == 0);
 	  if (isScalar) {
 	    // scalar
-	    if (Array.isArray(array)) {
+	    if (Array.isArray(array) || ArrayBuffer.isView(array)) {
 	      throw new DimensionError(array.length, 0);
 	    }
 	  }
@@ -11926,6 +11926,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 */
 	exports.resize = function(array, size, defaultValue) {
 	  // TODO: add support for scalars, having size=[] ?
+	  // TODO: add resizing for typed arrays
 
 	  // check the type of the arguments
 	  if (!Array.isArray(array) || !Array.isArray(size)) {
@@ -12152,11 +12153,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 
 	/**
-	 * Test whether an object is an array
+	 * Test whether an object is an array or typed array
 	 * @param {*} value
 	 * @return {boolean} isArray
 	 */
-	exports.isArray = Array.isArray;
+	exports.isArray = function (val) {
+	  return Array.isArray(val) || ArrayBuffer.isView(val);
+	};
 
 
 /***/ },
@@ -12178,6 +12181,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *     'number'
 	 *     'string'
 	 *     'Array'
+	 *     'TypedArray'
 	 *     'Function'
 	 *     'Date'
 	 *     'RegExp'
@@ -12197,6 +12201,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    if (x instanceof Number)  return 'number';
 	    if (x instanceof String)  return 'string';
 	    if (Array.isArray(x))     return 'Array';
+	    if (ArrayBuffer.isView(x)) return 'TypedArray';
 	    if (x instanceof Date)    return 'Date';
 	    if (x instanceof RegExp)  return 'RegExp';
 
@@ -12215,7 +12220,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	 *                   x is a Matrix or Array.
 	 */
 	exports.isScalar = function (x) {
-	  return !((x && x.isMatrix) || Array.isArray(x));
+	  return !((x && x.isMatrix) || Array.isArray(x) || ArrayBuffer.isView(x));
 	};
 
 
@@ -35020,12 +35025,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	/**
-	 * Test whether a value is a collection: an Array or Matrix
+	 * Test whether a value is a collection: an Array, TypedArray or Matrix
 	 * @param {*} x
 	 * @returns {boolean} isCollection
 	 */
 	module.exports = function isCollection (x) {
-	  return (Array.isArray(x) || (x && x.isMatrix === true));
+	  return (Array.isArray(x) || ArrayBuffer.isView(x) || (x && x.isMatrix === true));
 	};
 
 
@@ -35178,13 +35183,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * Reduce a given matrix or array to a new matrix or
 	 * array with one less dimension, applying the given
 	 * callback in the selected dimension.
-	 * @param {Array | Matrix} mat
+	 * @param {Array | TypedArray | Matrix} mat
 	 * @param {number} dim
 	 * @param {Function} callback
-	 * @return {Array | Matrix} res
+	 * @return {Array | TypedArray | Matrix} res
 	 */
 	module.exports = function(mat, dim, callback) {
-	  var size = Array.isArray(mat) ? arraySize(mat) : mat.size();
+	  var size = Array.isArray(mat) || ArrayBuffer.isView(mat) ? arraySize(mat) : mat.size();
 	  if (dim < 0 || (dim >= size.length)) {
 	    // TODO: would be more clear when throwing a DimensionError here
 	    throw new IndexError(dim, size.length);
@@ -35199,17 +35204,17 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/**
 	 * Recursively reduce a matrix
-	 * @param {Array} mat
+	 * @param {Array | TypedArray} mat
 	 * @param {number} dim
 	 * @param {Function} callback
-	 * @returns {Array} ret
+	 * @returns {Array | TypedArray} ret
 	 * @private
 	 */
 	function _reduce(mat, dim, callback){
 	  var i, ret, val, tran;
 
 	  if(dim<=0){
-	    if( !Array.isArray(mat[0]) ){
+	    if( !Array.isArray(mat[0]) && !ArrayBuffer.isView(mat[0]) ){
 	      val = mat[0];
 	      for(i=1; i<mat.length; i++){
 	        val = callback(val, mat[i]);
@@ -35234,8 +35239,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/**
 	 * Transpose a matrix
-	 * @param {Array} mat
-	 * @returns {Array} ret
+	 * @param {Array | TypedArray} mat
+	 * @returns {Array | TypedArray} ret
 	 * @private
 	 */
 	function _switch(mat){
